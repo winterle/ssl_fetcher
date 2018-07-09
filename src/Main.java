@@ -1,3 +1,5 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
@@ -41,6 +43,22 @@ public class Main {
         addrList2.add(new InetSocketAddress("tutorialspoint.com",443));
         addrList2.add(new InetSocketAddress("netzpolitik.org",443));
         addrList2.add(new InetSocketAddress("stackoverflow.com",443));
+
+        /*reading ip's from a text file for demonstration purposes*/
+        try {
+            BufferedReader br = new BufferedReader(new FileReader("ips.txt"));
+            String line = br.readLine();
+            while(line != null){
+                addrList1.add(new InetSocketAddress(line,443));
+                System.out.println(line);
+                line = br.readLine();
+            }
+            br.close();
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+
 
         Worker worker1 = new Worker("worker1",addrList1,requestBytes);
         Worker worker2 = new Worker("worker2",addrList2,requestBytes);
