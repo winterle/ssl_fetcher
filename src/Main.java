@@ -1,55 +1,17 @@
-import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.nio.channels.*;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import javax.net.*;
+
 
 
 /*todo
 * find way to continue reading data from the connection until the certificate is found -> very inefficient, fix
  * cancel the connection to the server instantaniously w/o FIN
 * socket (other objects) reuse?
-* multithreading? worker threads?
 * datastruct for saving the certificate (just write to file?)
 * */
 public class Main {
         static int certCount = 0;
-    public static boolean extractCertificate(byte[] handshake){
-        /*search for certificate start, assuming certificate is the first handshake type in the message (which is standard)*/
-        for(int i = 0; i < handshake.length;i++){
-            /*beware out of bounds*/
-            if(handshake[i]==(byte)22 && i < handshake.length-5) {
-                if(!(handshake[i+1] == (byte)3 && handshake[i+2] == (byte)3))continue;
-                System.out.println("handshake message start found");
-                if(handshake[i+5] == (byte)0x0b){//found certificate start
-                    certCount++;
-                    System.out.println("cert start found, certCount is now "+certCount);
-                    /*do something here*/
-                    return true;
-                }
-                /*in these cases, we can skip examining the next (length) bytes (length in message)*/
-                else if(handshake[i+5] == (byte)0x0c){
-                    System.out.println("found key exchange start");
-                    continue;
-                }
-                else if(handshake[i+5] == (byte)0x02){
-                    System.out.println("found server hello");
-                    continue;
-                }
-                else System.out.println("byte = "+handshake[i+5]); //probably server hello done identifier
-                break;
-            }
-        }
-        System.out.println("certCount = "+certCount);
-        return false;
-    }
+
 
     public static byte[] hexToByteArray(String hex){
         byte[] bytes = new byte[hex.length()/2];
