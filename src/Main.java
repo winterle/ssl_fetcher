@@ -56,11 +56,6 @@ public class Main {
     }
 
     public static void client(byte[] request, ArrayList<InetSocketAddress> addressList){
-        /*ByteBuffer containing the request to send to the servers -> remove this, no use (byte buffer is emptied on use(or the index becomes weird))*/
-        ByteBuffer requestBuffer = ByteBuffer.allocate(request.length);
-        requestBuffer.clear();
-        requestBuffer.put(request);
-        requestBuffer.flip();
 
         int socketCount = addressList.size();
         ArrayList<SelectionKey> keyList = new ArrayList<SelectionKey>();
@@ -148,34 +143,36 @@ public class Main {
 
     public static void main(String[] args) {
         String requestHex = "160301012c01000128030322dd79ffb657d1782dcf7298d1c98e21cd01c5d08ec7573fb61a2594b7ec45dc0000aac030c02cc028c024c014c00a00a500a300a1009f006b006a0069006800390038003700360088008700860085c032c02ec02ac026c00fc005009d003d00350084c02fc02bc027c023c013c00900a400a200a0009e00670040003f003e0033003200310030009a0099009800970045004400430042c031c02dc029c025c00ec004009c003c002f00960041c011c007c00cc00200050004c012c008001600130010000dc00dc003000a00ff01000055000b000403000102000a001c001a00170019001c001b0018001a0016000e000d000b000c0009000a00230000000d0020001e060106020603050105020503040104020403030103020303020102020203000f000101";
-        /*tls1.0 for simplicity? not supported standard*/
-        //requestHex = "16030100c0010000bc030132c342d62e5616e6c52910d675a6ac6918e55ffb6e45fe667d34fc366b4eddc7000062c014c00a00390038003700360088008700860085c00fc00500350084c013c0090033003200310030009a0099009800970045004400430042c00ec004002f00960041c011c007c00cc00200050004c012c008001600130010000dc00dc003000a00ff01000031000b000403000102000a001c001a00170019001c001b0018001a0016000e000d000b000c0009000a00230000000f000101";
         byte[] requestBytes = hexToByteArray(requestHex);
 
         /*provisional list of internet addresses (since hostnames, DNS before TCP connection)*/
-        InetSocketAddress addr1 = new InetSocketAddress("google.com",443);
-        InetSocketAddress addr2 = new InetSocketAddress("sar.informatik.hu-berlin.de",443);
-        InetSocketAddress addr3 = new InetSocketAddress("google.de",443);
-        InetSocketAddress addr4 = new InetSocketAddress("moodle.hu-berlin.de",443);
-        InetSocketAddress addr5 = new InetSocketAddress("duckduckgo.com",443);
-
 
         ArrayList<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
 
-        addresses.add(addr1);
-        addresses.add(addr2);
-        addresses.add(addr3);
-        addresses.add(addr4);
-        addresses.add(addr5);
+        addresses.add(new InetSocketAddress("google.com",443));
+        addresses.add(new InetSocketAddress("sar.informatik.hu-berlin.de",443));
+        addresses.add(new InetSocketAddress("google.de",443));
+        addresses.add(new InetSocketAddress("moodle.hu-berlin.de",443));
+        addresses.add(new InetSocketAddress("duckduckgo.com",443));
         addresses.add(new InetSocketAddress("github.com",443));
         addresses.add(new InetSocketAddress("reddit.com",443));
         addresses.add(new InetSocketAddress("tutorialspoint.com",443));
         addresses.add(new InetSocketAddress("netzpolitik.org",443));
         addresses.add(new InetSocketAddress("stackoverflow.com",443));
 
+        Worker worker1 = new Worker("worker1",addresses,requestBytes);
+        worker1.start();
+        try{
+            worker1.join(10000);
+        }
+        catch(InterruptedException e){
+            System.out.println("interrupted");
+        }
+        if(worker1.isAlive()){
+            System.out.println("worker1 is still alive, might have unfinished work");
+        }
 
-
-        client(requestBytes,addresses);
+        //client(requestBytes,addresses);
 
 /*
 
