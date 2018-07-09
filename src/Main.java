@@ -20,11 +20,8 @@ import javax.net.*;
 * datastruct for saving the certificate (just write to file?)
 * */
 public class Main {
-        static boolean debug = false;
-        static int startCount = 0;
         static int certCount = 0;
-    public static void extractCertificate(byte[] handshake){
-        //if(handshake[0]!=(byte)22)System.out.println("no handshake"+ handshake[0]);
+    public static boolean extractCertificate(byte[] handshake){
         /*search for certificate start, assuming certificate is the first handshake type in the message (which is standard)*/
         for(int i = 0; i < handshake.length;i++){
             /*beware out of bounds*/
@@ -33,8 +30,9 @@ public class Main {
                 System.out.println("handshake message start found");
                 if(handshake[i+5] == (byte)0x0b){//found certificate start
                     certCount++;
-                    System.out.println("cert start found");
+                    System.out.println("cert start found, certCount is now "+certCount);
                     /*do something here*/
+                    return true;
                 }
                 /*in these cases, we can skip examining the next (length) bytes (length in message)*/
                 else if(handshake[i+5] == (byte)0x0c){
@@ -46,90 +44,11 @@ public class Main {
                     continue;
                 }
                 else System.out.println("byte = "+handshake[i+5]); //probably server hello done identifier
-                startCount++;
                 break;
             }
         }
-        System.out.println("startCount = "+startCount+"; certCount = "+certCount);
-        //else System.out.println("ok");
-        //for(int i = 0; i < handshake.length; i++)System.out.println(handshake[i]);
-    }
-
-    public static void client(byte[] request, ArrayList<InetSocketAddress> addressList){
-
-        int socketCount = addressList.size();
-        ArrayList<SelectionKey> keyList = new ArrayList<SelectionKey>();
-        try {
-            Selector selector = Selector.open();
-
-        /*open a socket for each socketAdress inside the param addressList, also set them to non-blocking mode*/
-        for(int i = 0; i < socketCount; i++){
-                SocketChannel curr = SocketChannel.open();
-                curr.configureBlocking(false);
-                SelectionKey newKey = curr.register(selector, SelectionKey.OP_CONNECT);
-                keyList.add(newKey);
-                curr.connect(addressList.get(i));
-        }
-
-        /**/
-
-
-
-                while (true) {
-                    int readyChannels = selector.select();
-
-                    Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
-                    while(keyIterator.hasNext()){
-                        SelectionKey key = keyIterator.next();
-                        keyIterator.remove();
-
-                        if(!key.isValid())continue;
-
-                        if(key.isConnectable()) {
-                            SocketChannel channel = (SocketChannel) key.channel();
-                            if(channel.isConnectionPending()){
-                                channel.finishConnect();
-                            }
-                            channel.configureBlocking(false);
-                            if(debug)System.out.println("connected");
-                            channel.register(selector,SelectionKey.OP_WRITE);
-                        }
-
-                        if(key.isWritable()){
-                            if(debug)System.out.println("is writable");
-                            SocketChannel channel = (SocketChannel) key.channel();
-                            channel.write(ByteBuffer.wrap(request));
-                            /*prepare for reading responses*/
-                            key.interestOps(SelectionKey.OP_READ);
-                            if(debug)System.out.println("writing finished");
-
-                        }
-                        if(key.isReadable()){
-                            SocketChannel channel = (SocketChannel) key.channel();
-                            ByteBuffer out = ByteBuffer.allocate(8192);
-                            out.clear();
-                            int bytesRead = channel.read(out);
-                            /*for now we just exit if a connection is closed (usually after timeout by peer)*/
-                            if(bytesRead == -1)return;
-                            if(debug)System.out.println("remaining = " + out.remaining());
-                            if(debug)System.out.println("read = " + bytesRead);
-                            String v = new String(out.array());
-                            extractCertificate(out.array());
-                            if(debug)System.out.println(v);
-                            key.interestOps(SelectionKey.OP_READ);
-                        }
-                    }
-
-
-
-                }
-
-
-        }
-        catch (java.io.IOException e){
-            e.printStackTrace();
-        }
-
+        System.out.println("certCount = "+certCount);
+        return false;
     }
 
     public static byte[] hexToByteArray(String hex){
@@ -147,23 +66,27 @@ public class Main {
 
         /*provisional list of internet addresses (since hostnames, DNS before TCP connection)*/
 
-        ArrayList<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
+        ArrayList<InetSocketAddress> addrList1 = new ArrayList<InetSocketAddress>();
+        ArrayList<InetSocketAddress> addrList2 = new ArrayList<InetSocketAddress>();
 
-        addresses.add(new InetSocketAddress("google.com",443));
-        addresses.add(new InetSocketAddress("sar.informatik.hu-berlin.de",443));
-        addresses.add(new InetSocketAddress("google.de",443));
-        addresses.add(new InetSocketAddress("moodle.hu-berlin.de",443));
-        addresses.add(new InetSocketAddress("duckduckgo.com",443));
-        addresses.add(new InetSocketAddress("github.com",443));
-        addresses.add(new InetSocketAddress("reddit.com",443));
-        addresses.add(new InetSocketAddress("tutorialspoint.com",443));
-        addresses.add(new InetSocketAddress("netzpolitik.org",443));
-        addresses.add(new InetSocketAddress("stackoverflow.com",443));
+        addrList1.add(new InetSocketAddress("google.com",443));
+        addrList1.add(new InetSocketAddress("sar.informatik.hu-berlin.de",443));
+        addrList1.add(new InetSocketAddress("google.de",443));
+        addrList1.add(new InetSocketAddress("moodle.hu-berlin.de",443));
+        addrList1.add(new InetSocketAddress("duckduckgo.com",443));
+        addrList2.add(new InetSocketAddress("github.com",443));
+        addrList2.add(new InetSocketAddress("reddit.com",443));
+        addrList2.add(new InetSocketAddress("tutorialspoint.com",443));
+        addrList2.add(new InetSocketAddress("netzpolitik.org",443));
+        addrList2.add(new InetSocketAddress("stackoverflow.com",443));
 
-        Worker worker1 = new Worker("worker1",addresses,requestBytes);
+        Worker worker1 = new Worker("worker1",addrList1,requestBytes);
+        Worker worker2 = new Worker("worker2",addrList2,requestBytes);
         worker1.start();
+        worker2.start();
         try{
             worker1.join(10000);
+            worker2.join(10000);
         }
         catch(InterruptedException e){
             System.out.println("interrupted");
@@ -171,36 +94,8 @@ public class Main {
         if(worker1.isAlive()){
             System.out.println("worker1 is still alive, might have unfinished work");
         }
-
-        //client(requestBytes,addresses);
-
-/*
-
-        try {
-            SocketChannel sc = SocketChannel.open();
-
-            InetSocketAddress addr = new InetSocketAddress("sar.informatik.hu-berlin.de",443);
-            sc.connect(addr);
-
-            ByteBuffer buf = ByteBuffer.allocate(5000);
-            buf.clear();
-            buf.put(bytes);
-            buf.flip();
-            sc.write(buf);
-
-            ByteBuffer out = ByteBuffer.allocate(2048);
-            out.clear();
-            int bytesRead = sc.read(out);
-            System.out.println("remaining = " + out.remaining());
-            System.out.println("read = " + bytesRead);
-            String v = new String(out.array());
-            System.out.println(v);
-
+        if(worker2.isAlive()){
+            System.out.println("worker2 is still alive, might have unfinished work");
         }
-        catch (java.io.IOException e){
-            e.printStackTrace();
-        }
-
-*/
     }
 }

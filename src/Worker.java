@@ -18,7 +18,7 @@ public class Worker extends Thread{
     public Worker(String name, ArrayList<InetSocketAddress> list,byte[] request){
         this.list = list;
         this.threadName = name;
-        this.request = request;
+        this.request = request.clone(); //so we dont have to serialise access
         System.out.println("created thread "+threadName);
     }
 
@@ -27,7 +27,7 @@ public class Worker extends Thread{
     public void run(){
         System.out.println("Thread "+ threadName + " running");
         boolean debug = false;
-        /*program logic will be here*/
+        /*actual program logic*/
         int socketCount = this.list.size(); //for now
         try {
             Selector selector = Selector.open();
@@ -76,7 +76,8 @@ public class Worker extends Thread{
                         if (debug) System.out.println("remaining = " + out.remaining());
                         if (debug) System.out.println("read = " + bytesRead);
                         String v = new String(out.array());
-                        //is ok calling a function from main (another thread?)
+                        /*is ok calling a method from main (another thread?) -> no, this method uses variables that are not(!) serialised
+                        but would be good to deligate that work to other treads so we dont have to wait for the finished inspection every time*/
                         Main.extractCertificate(out.array());
                         if (debug) System.out.println(v);
                         key.interestOps(SelectionKey.OP_READ);
