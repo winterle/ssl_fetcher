@@ -26,12 +26,10 @@ public class Worker extends Thread{
         this.list = list;
         this.threadName = name;
         this.request = request.clone(); //so we dont have to serialise access
-        this.file = new File(this.threadName+".txt");
+        this.file = new File(this.threadName+".bin");
         file.delete();
         try {
             FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
-
-
             this.fileBuffer = fileChannel.map(FileChannel.MapMode.READ_WRITE,0,4096*8*8);
         }
         catch (Exception e){
@@ -126,21 +124,31 @@ public class Worker extends Thread{
             /*beware out of bounds*/
             if(handshake[i]==(byte)22 && i < handshake.length-5) {
                 if(!(handshake[i+1] == (byte)3 && handshake[i+2] == (byte)3))continue;
+                i+=5; //position of handshake type identifier
                 System.out.println("handshake message start found");
-                if(handshake[i+5] == (byte)0x0b){//found certificate start
-
+                if(handshake[i] == (byte)0x0b){//found certificate start
                     System.out.println("cert start found");
                     /*write certificate to memory mapped file (different one for each thread to avoid serialisation)*/
-                    for(int j = i+6;j < handshake.length; j++){
+                    int certlen = 0;
+                    certlen += handshake[i+4];
+                    certlen = certlen<<8;
+                    certlen += handshake[i+5];
+                    certlen = certlen<<8;
+                    certlen+=handshake[i+6];
+                    System.out.println("len = "+certlen);
+                    for(int j = i+14;j < handshake.length && j-i < certlen; j++){
                         this.fileBuffer.put(handshake[j]);
+                    }
+                    for(int z = 0; z < 15; z++){
+                        this.fileBuffer.put((byte)0x58); //separator
                     }
                     return true;
                 }
                 /*in these cases, we can skip examining the next (length) bytes (length in message)*/
-                else if(handshake[i+5] == (byte)0x0c){
+                else if(handshake[i] == (byte)0x0c){
                     System.out.println("found key exchange start");
                 }
-                else if(handshake[i+5] == (byte)0x02){
+                else if(handshake[i] == (byte)0x02){
                     System.out.println("found server hello");
                 }
                 else System.out.println("byte = "+handshake[i+5]); //probably server hello done identifier
