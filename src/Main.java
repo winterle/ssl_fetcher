@@ -12,7 +12,6 @@ import java.util.ArrayList;
 * datastruct for saving the certificate (just write to file?)
 * */
 public class Main {
-        static int certCount = 0;
 
 
     public static byte[] hexToByteArray(String hex){
