@@ -34,6 +34,7 @@ public class Main {
         ArrayList<InetSocketAddress> addrList2 = new ArrayList<InetSocketAddress>();
 
         addrList1.add(new InetSocketAddress("google.com",443));
+
         addrList1.add(new InetSocketAddress("sar.informatik.hu-berlin.de",443));
         addrList1.add(new InetSocketAddress("google.de",443));
         addrList1.add(new InetSocketAddress("moodle.hu-berlin.de",443));
@@ -49,7 +50,7 @@ public class Main {
             BufferedReader br = new BufferedReader(new FileReader("ips.txt"));
             String line = br.readLine();
             while(line != null){
-                addrList1.add(new InetSocketAddress(line,443));
+                addrList2.add(new InetSocketAddress(line,443));
                 System.out.println(line);
                 line = br.readLine();
             }
