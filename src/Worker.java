@@ -60,8 +60,10 @@ public class Worker extends Thread{
             int closedSockets = 0;
             while (true) {
                 int readyChannels;
-                if(closedSockets < socketCount){readyChannels = selector.select();}
+                if(closedSockets < socketCount){readyChannels = selector.select(2000);}
                 else break;
+                if(selector.keys().size()<30)break; //ugly "hotfix" for 1 minute escalating retransmissions
+
 
                 Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
                 while (keyIterator.hasNext()) {
@@ -72,11 +74,25 @@ public class Worker extends Thread{
 
                     if (key.isConnectable()) {
                         SocketChannel channel = (SocketChannel) key.channel();
-                        if (channel.isConnectionPending()) {
-                            channel.finishConnect();
+                        try {
+                            if (channel.isConnectionPending()) {
+                                if (!channel.finishConnect()) {
+                                    key.cancel();
+                                    channel.shutdownOutput();
+                                    closedSockets++;
+                                    continue;
+                                }
+                            }
+                            else System.out.println("here");
+                        }
+                        catch (java.net.ConnectException e){
+                            System.out.println("connection refused");
+                            key.cancel();
+                            closedSockets++;
+                            continue;
                         }
                         channel.configureBlocking(false);
-                        if (debug) System.out.println("connected");
+                        System.out.println("connection to server established");
                         channel.register(selector, SelectionKey.OP_WRITE);
                     }
 
@@ -92,13 +108,20 @@ public class Worker extends Thread{
                     if (key.isReadable()) {
                         SocketChannel channel = (SocketChannel) key.channel();
                         ByteBuffer buffer = (ByteBuffer)key.attachment();
-                        int bytesRead = channel.read(buffer);
-                        /*exit if a connection is closed (timeout, reset)*/
-                        if (bytesRead == -1) {
+                        try {
+                            int bytesRead = channel.read(buffer);
+                            /*exit if a connection is closed (timeout, reset)*/
+                            if (bytesRead == -1) {
+                                key.cancel();
+                                continue;
+                            }
+                        }
+                        catch (java.io.IOException e){
                             key.cancel();
+                            channel.shutdownOutput();
+                            closedSockets++;
                             continue;
                         }
-
                         /**/
                         int ret = extractCertificate(buffer.array(),buffer.position());
                         if(ret == 1){ //if this returns 1, a certificate was found, so we don't the socket anymore
@@ -136,7 +159,7 @@ public class Worker extends Thread{
                 if(id == (byte)0x0b){
                     i+=4;
                     if(i >= limit)return 2; //continue buffering
-                    System.out.println("cert start found");
+//                    System.out.println("cert start found");
                     /*determine the total length of the certificates*/
                     int totalLen = 0;
                     totalLen+= (handshake[i]&0xFF);//java likes signed bytes
@@ -189,7 +212,7 @@ public class Worker extends Thread{
                 else if(id == (byte)0x02){
                     System.out.println("found server hello");
                 }
-                else System.out.println("byte = "+id); //probably server hello done identifier
+                //else System.out.println("byte = "+id); //probably server hello done identifier
             }
         }
         return 0;

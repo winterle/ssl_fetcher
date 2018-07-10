@@ -58,11 +58,34 @@ public class Main {
         catch(Exception e){
             e.printStackTrace();
         }
+        try {
+            BufferedReader br = new BufferedReader(new FileReader("name_ip_list.txt"));
+            String line = br.readLine();
+            int lineno = 0;
+            while(line != null){
+                lineno++;
+                line = line.substring(line.indexOf(';')+1);
+                System.out.println(line);
+                if(line.isEmpty()){line = br.readLine();continue;}
+                switch (lineno%2){//number of threads
+                    case 0: addrList1.add(new InetSocketAddress(line,443)); break;
+                    case 1: addrList2.add(new InetSocketAddress(line,443));break;
+                    default: break;
+                }
+                //System.out.println(line);
+                line = br.readLine();
+            }
+            br.close();
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
 
 
         Worker worker1 = new Worker("worker1",addrList1,requestBytes);
         Worker worker2 = new Worker("worker2",addrList2,requestBytes);
-        worker1.start();
+        System.out.println("starting threads...");
+	worker1.start();
         worker2.start();
         try{
             worker1.join(10000);
