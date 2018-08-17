@@ -1,2 +1,11 @@
-ssl_fetcher
+SSL certificate fetcher
+
+Reads a list of ip adresses and connects via port 443,
+fetches the certificates and saves them to .bin files
+in 'der' format.
+All the files have to be present when executing.
+name_ip_list.txt --> list of ip adresses
+workerx.bin --> target files where x is the number of the thread (currently [1-2])
+The fetched certificates are seperated by the string 'XXXXXXXXXX'
+and can be converted with openssl to a readable format.
 
